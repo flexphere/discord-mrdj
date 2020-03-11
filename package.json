@@ -1,0 +1,12 @@
+{
+  "name": "my-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^12.0.2",
+    "node-opus": "^0.3.3",
+    "youtube-audio-stream": "^0.3.5",
+    "yt-search": "^1.1.2"
+  }
+}
