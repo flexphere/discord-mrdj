@@ -1,0 +1,24 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: discord-mrdj-deployment
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: discord-mrdj
+    spec:
+      containers:
+        - image: discord-mrdj/discord-mrdj
+          imagePullPolicy: Always
+          name: discord-mrdj-container
+          env:
+            - name: DISCORD_TOKEN
+              valueFrom:
+                  secretKeyRef:
+                      name: discord-config
+                      key: mrdj-token
+          resources:
+            requests:
+              cpu: "1m"
