@@ -83,8 +83,9 @@ client.on("messageReactionAdd", async(messageReaction, user) => {
         }
 
         const result = searchResults.find(r => r.emoji === messageReaction.emoji.name);
-        messageReaction.message.channel.send(`🎶 Now Playing... ${result.video.title}\n${result.video.url}`);
-        messageReaction.message.delete();
+        await messageReaction.message.channel.send(`🎶 Now Playing... ${result.video.title}\n${result.video.url}`);
+        client.user.setActivity(result.video.title);
+        await messageReaction.message.delete();
 
         const connection = await member.voice.channel.join();
         const audio = stream(result.video.url);
