@@ -1,6 +1,6 @@
 const Discord = require('discord.js');
 const yts = require('yt-search');
-const stream = require('youtube-audio-stream')
+const ytdl = require('ytdl-core');
 const client = new Discord.Client();
 const token = process.env.DISCORD_TOKEN
 const command = '!mrdj';
@@ -88,8 +88,7 @@ client.on("messageReactionAdd", async(messageReaction, user) => {
         await messageReaction.message.delete();
 
         const connection = await member.voice.channel.join();
-        const audio = stream(result.video.url);
-        const dispatcher = connection.play(audio);
+        const dispatcher = connection.play(ytdl(result.video.url, { filter: 'audioonly', highWaterMark: 1 << 25, }));
         dispatcher.on('end', reason => {
             connection.disconnect();
         });
