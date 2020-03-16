@@ -25,7 +25,7 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
-    @Command('>mrdj skip')
+    @Command('!mrdj skip')
     async requestSkip(message: Discord.Message, ...args: string[]) {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
@@ -33,7 +33,7 @@ export class MrDJ extends Base {
         this.play();
     }
 
-    @Command('>mrdj list')
+    @Command('!mrdj list')
     async requestPlaylist(message: Discord.Message, ...args: string[]) {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
@@ -47,7 +47,7 @@ export class MrDJ extends Base {
         return this.flashMessage(message.channel, embed);
     }
 
-    @Command('>mrdj play')
+    @Command('!mrdj play')
     async requestPlay(message: Discord.Message, ...args: string[]) {
         try {
             const searchKeyword = args.join(" ");
