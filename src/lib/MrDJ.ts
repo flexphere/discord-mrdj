@@ -133,11 +133,11 @@ export class MrDJ extends Base {
             this.client.user?.setActivity(`🎶 Now Playing... ${queue.video.title}\n${queue.video.url}`);
             this.playing = true;
             const stream = ytdl(queue.video.url, { filter: 'audioonly', highWaterMark: 1 << 25, });
-            stream.on('end', () => {
+            const dispatcher = this.connection.play(stream);
+            dispatcher.on('finish', () => {
                 this.playing = false;
                 this.play();
             });
-            this.connection.play(stream);
         } catch (e) {
             console.log(e);
         }
