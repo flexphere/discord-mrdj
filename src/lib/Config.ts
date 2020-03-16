@@ -1,5 +1,5 @@
 export const Config = {
-    token: process.env.DISCORD_TOKEN || "Njg3NjYzNjM3NzExOTQ1NzY2.XmpCtA.KwgEYAxuUQrYtav7FDdVcvz2OG8",
+    token: process.env.DISCORD_TOKEN || '',
     db: {
         host: process.env.DB_HOST,
         user: process.env.DB_USER,
