@@ -2,7 +2,9 @@ FROM node:13.10.1-alpine3.10
 
 WORKDIR /workspace
 COPY . .
-RUN apk add --update gcc make g++ ffmpeg python
+RUN apk update && apk upgrade
+RUN apk add gcc make g++ ffmpeg python
 RUN rm -rf node_modules
-RUN yarn install ref@latest
+RUN yarn add ref@latest
+RUN yarn install
 CMD ["yarn", "start"]
