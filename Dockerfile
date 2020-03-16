@@ -5,4 +5,5 @@ COPY . .
 RUN apk add --update gcc make g++ ffmpeg python
 RUN rm -rf node_modules
 RUN npm install
-CMD ["node", "index.js"]
+RUN ./node_modules/.bin/tsc
+CMD ["node", "dist/index.js"]
