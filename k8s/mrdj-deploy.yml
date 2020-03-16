@@ -19,6 +19,23 @@ spec:
                   secretKeyRef:
                       name: discord-config
                       key: mrdj-token
+            - name: DB_HOST
+              valueFrom:
+                  secretKeyRef:
+                      name: database-config
+                      key: hostname
+            - name: DB_USER
+              valueFrom:
+                  secretKeyRef:
+                      name: database-config
+                      key: username
+            - name: DB_PASS
+              valueFrom:
+                  secretKeyRef:
+                      name: database-config
+                      key: password
+            - name: DB_NAME
+              value: "mrdj"
           resources:
             requests:
               cpu: "1m"
