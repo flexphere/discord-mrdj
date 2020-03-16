@@ -1,3 +1,5 @@
+![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/flexphere/discord-mrdj)
+
 # Mr.DJ
 Youtubeの動画を検索して、音声をVoiceChannelで流してくれるDiscord Bot。
 
