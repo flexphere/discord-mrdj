@@ -10,7 +10,7 @@ spec:
         app: discord-mrdj
     spec:
       containers:
-        - image: discord-mrdj/discord-mrdj
+        - image: asia.gcr.io/flex-k8s/discord-mrdj
           imagePullPolicy: Always
           name: discord-mrdj-container
           env:
