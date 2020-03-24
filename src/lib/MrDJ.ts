@@ -80,8 +80,11 @@ export class MrDJ extends Base {
                 return;
             }
 
-            const r = await yts({videoId:videoID});
-            this.playlist.push({ emoji: '', video: r });
+            const result = await yts({videoId:videoID});
+            this.playlist.push({ emoji: '', video: result });
+
+            const db = await Connection();
+            await db.query('INSERT INTO history (url, title) values (?, ?)', [result.video.url, result.video.title]);
             
             if (this.playing) {
                 return this.flashMessage(message.channel, `(*'ω')b+ 予約リストに入れたよ！`);    
