@@ -49,7 +49,7 @@ export class MrDJ extends Base {
                 return `${emoji} ${r.video.title}（${r.video.timestamp}）`;
             }).join("\n"));
 
-        return this.flashMessage(message.channel, embed);
+        return this.flashMessage(message.channel, embed, 10000);
     }
 
     @Command('!mrdj clear')
