@@ -181,9 +181,6 @@ export class MrDJ extends Base {
                 return;
             }
 
-            console.log(this.playlist);
-            console.log(`index: ${this.playindex}`);
-
             this.client.user?.setActivity(`🎶 Now Playing... ${queue.video.title}\n${queue.video.url}`);
             this.playing = true;
             const stream = ytdl(queue.video.url, { filter: 'audioonly', highWaterMark: 1 << 25, });
