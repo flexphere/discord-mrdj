@@ -44,7 +44,10 @@ export class MrDJ extends Base {
         const embed = new Discord.MessageEmbed()
             .setTitle('予約一覧')
             .setColor(0xf8e71c)
-            .setDescription(this.playlist.map(r => `${r.video.title}（${r.video.timestamp}）`).join("\n"));
+            .setDescription(this.playlist.map((r, i) => {
+                const emoji = i === this.playindex ? '🎶' : '➖';
+                return `${emoji} ${r.video.title}（${r.video.timestamp}）`;
+            }).join("\n"));
 
         return this.flashMessage(message.channel, embed);
     }
