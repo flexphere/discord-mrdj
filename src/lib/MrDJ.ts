@@ -81,7 +81,7 @@ export class MrDJ extends Base {
             }
 
             const r = await yts({videoId:videoID});
-            this.playlist.push(r);
+            this.playlist.push({ emoji: '', video: r });
             
             if (this.playing) {
                 return this.flashMessage(message.channel, `(*'ω')b+ 予約リストに入れたよ！`);    
