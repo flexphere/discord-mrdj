@@ -85,7 +85,7 @@ export class MrDJ extends Base {
             }
 
             if (reaction.message.id !== this.messageId) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡もっかい検索してくれい`);
+                return;
             }
 
             const member = reaction.message.guild?.member(user);
