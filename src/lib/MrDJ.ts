@@ -23,7 +23,7 @@ export class MrDJ extends Base {
     messageId: string = "";
     searchResults: SearchResult[] = [];
     playlist: SearchResult[] = [];
-    playindex: number = 0;
+    playindex: number = -1;
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
@@ -171,8 +171,12 @@ export class MrDJ extends Base {
 
     async play() {
         try {
+            if ( ! this.playlist.length) {
+                return;
+            }
+
             this.playindex++;
-            const queue =this.playlist[this.playindex];
+            const queue = this.playlist[this.playindex];
             if ( ! queue) {
                 this.playindex = 0;
                 this.play();
