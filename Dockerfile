@@ -7,4 +7,4 @@ RUN apk add gcc make g++ ffmpeg python
 RUN rm -rf node_modules
 RUN yarn add ref@latest
 RUN yarn install
-CMD ["tail", "-f"]
+CMD ["yarn", "start"]
