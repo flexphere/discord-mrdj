@@ -2,6 +2,7 @@
     "name": "my-bot",
     "version": "1.0.0",
     "main": "index.js",
+    "type": "module",
     "license": "MIT",
     "scripts": {
         "start": "./node_modules/.bin/ts-node && node src/index.ts"
