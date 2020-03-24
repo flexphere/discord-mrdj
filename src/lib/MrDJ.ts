@@ -22,6 +22,7 @@ export class MrDJ extends Base {
     messageId: string = "";
     searchResults: SearchResult[] = [];
     playlist: SearchResult[] = [];
+    playindex: number = 0;
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
@@ -45,6 +46,13 @@ export class MrDJ extends Base {
             .setDescription(this.playlist.map(r => `${r.video.title}（${r.video.timestamp}）`).join("\n"));
 
         return this.flashMessage(message.channel, embed);
+    }
+
+    @Command('!mrdj clear')
+    async requestPlaylistClear(message: Discord.Message, ...args: string[]) {
+        this.playindex = 0;
+        this.playlist = [];
+        return this.flashMessage(message.channel, "('A`)空っぽ ");
     }
 
     @Command('!mrdj play')
@@ -125,8 +133,11 @@ export class MrDJ extends Base {
 
     async play() {
         try {
-            const queue =this.playlist.shift();
+            this.playindex++;
+            const queue =this.playlist[this.playindex];
             if ( ! queue) {
+                this.playindex = 0;
+                this.play();
                 return;
             }
 
