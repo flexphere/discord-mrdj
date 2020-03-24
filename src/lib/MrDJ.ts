@@ -171,14 +171,14 @@ export class MrDJ extends Base {
 
     async play() {
         try {
-            if ( ! this.playlist.length) {
+            if (this.playlist.length < 1) {
                 return;
             }
 
             this.playindex++;
             const queue = this.playlist[this.playindex];
             if ( ! queue) {
-                this.playindex = 0;
+                this.playindex = -1;
                 this.play();
                 return;
             }

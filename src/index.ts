@@ -1,6 +1,3 @@
-require('source-map-support').install();
-process.on('unhandledRejection', console.log);
-
 import Discord from 'discord.js';
 import { Config } from './lib/Config'
 import { Control } from './lib/discordUtil/Control';
