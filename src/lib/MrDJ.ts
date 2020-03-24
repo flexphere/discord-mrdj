@@ -3,6 +3,7 @@ import { Base } from './discordUtil/Base';
 import { Bot, Command, Listen } from './discordUtil/Decorator';
 import { Alphabet } from './Emoji';
 import { Connection } from './DB';
+const qs = require('querystring');
 const ytdl = require('ytdl-core');
 const yts = require('yt-search');
 
@@ -57,9 +58,42 @@ export class MrDJ extends Base {
 
     @Command('!mrdj play')
     async requestPlay(message: Discord.Message, ...args: string[]) {
+        const param = args.join(" ");
+        if (param.startsWith('https://www.youtube.com')) {
+            return this.playFromURL(param, message);
+        }
+        return this.playFromQuery(param, message)
+    }
+
+    async playFromURL(url: string, message: Discord.Message) {
         try {
-            const searchKeyword = args.join(" ");
+            let videoID = "";
+
+            if (url.indexOf('?') !== -1) {
+                const params = qs.parse(url.split('?')[1]);
+                videoID = params.v;
+            }
+
+            if (videoID === "") {
+                return;
+            }
+
+            const r = await yts({videoId:videoID});
+            this.playlist.push(r);
             
+            if (this.playing) {
+                return this.flashMessage(message.channel, `(*'ω')b+ 予約リストに入れたよ！`);    
+            }
+
+            return this.play();
+        } catch (e) {
+            console.error(e);
+            message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
+        }
+    }
+
+    async playFromQuery(searchKeyword: string, message: Discord.Message) {
+        try {
             const r = await yts(searchKeyword);
             if ( ! r?.videos) {
                 return this.flashMessage(message.channel, '｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。動画みっかんなかった');
