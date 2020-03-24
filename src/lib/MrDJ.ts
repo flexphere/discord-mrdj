@@ -40,7 +40,6 @@ export class MrDJ extends Base {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
         }
-        console.log(this.playlist)
         const embed = new Discord.MessageEmbed()
             .setTitle('予約一覧')
             .setColor(0xf8e71c)
@@ -82,7 +81,6 @@ export class MrDJ extends Base {
             }
 
             const r = await yts({videoId:videoID});
-            console.log(r)
             this.playlist.push(r);
             
             if (this.playing) {
@@ -182,6 +180,9 @@ export class MrDJ extends Base {
                 this.play();
                 return;
             }
+
+            console.log(this.playlist);
+            console.log(`index: ${this.playindex}`);
 
             this.client.user?.setActivity(`🎶 Now Playing... ${queue.video.title}\n${queue.video.url}`);
             this.playing = true;
