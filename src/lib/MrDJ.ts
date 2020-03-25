@@ -23,7 +23,7 @@ export class MrDJ extends Base {
     messageId: string = "";
     searchResults: SearchResult[] = [];
     playlist: SearchResult[] = [];
-    playindex: number = 0;
+    playindex: number = -1;
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
@@ -40,7 +40,6 @@ export class MrDJ extends Base {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
         }
-
         const embed = new Discord.MessageEmbed()
             .setTitle('予約一覧')
             .setColor(0xf8e71c)
@@ -49,7 +48,7 @@ export class MrDJ extends Base {
                 return `${emoji} ${r.video.title}（${r.video.timestamp}）`;
             }).join("\n"));
 
-        return this.flashMessage(message.channel, embed);
+        return this.flashMessage(message.channel, embed, 10000);
     }
 
     @Command('!mrdj clear')
@@ -81,8 +80,27 @@ export class MrDJ extends Base {
                 return;
             }
 
-            const r = await yts({videoId:videoID});
-            this.playlist.push(r);
+            if ( ! this.connection) {
+                const member = message.guild?.member(message.author);
+                if ( ! member) {
+                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
+                }
+
+                if ( ! member.voice.channel) {
+                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
+                }
+
+                this.connection = await member.voice.channel?.join();
+                if ( ! this.connection) {
+                    return;
+                }
+            }
+
+            const v = await yts({videoId:videoID});
+            this.playlist.push({ emoji: '', video: v });
+
+            const db = await Connection();
+            await db.query('INSERT INTO history (url, title) values (?, ?)', [v.url, v.title]);
             
             if (this.playing) {
                 return this.flashMessage(message.channel, `(*'ω')b+ 予約リストに入れたよ！`);    
@@ -170,10 +188,14 @@ export class MrDJ extends Base {
 
     async play() {
         try {
+            if (this.playlist.length < 1) {
+                return;
+            }
+
             this.playindex++;
-            const queue =this.playlist[this.playindex];
+            const queue = this.playlist[this.playindex];
             if ( ! queue) {
-                this.playindex = 0;
+                this.playindex = -1;
                 this.play();
                 return;
             }
