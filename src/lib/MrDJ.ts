@@ -80,6 +80,22 @@ export class MrDJ extends Base {
                 return;
             }
 
+            if ( ! this.connection) {
+                const member = message.guild?.member(message.author);
+                if ( ! member) {
+                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
+                }
+
+                if ( ! member.voice.channel) {
+                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
+                }
+
+                this.connection = await member.voice.channel?.join();
+                if ( ! this.connection) {
+                    return;
+                }
+            }
+
             const v = await yts({videoId:videoID});
             this.playlist.push({ emoji: '', video: v });
 
