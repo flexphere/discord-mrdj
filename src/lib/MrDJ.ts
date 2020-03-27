@@ -27,7 +27,7 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
-    @Command('!mrdj fav list')
+    @Command('!mrdj help')
     async help(message: Discord.Message, ...args: string[]) {
         return this.flashMessage(message.channel, `
             \`\`\`
