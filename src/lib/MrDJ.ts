@@ -58,7 +58,7 @@ export class MrDJ extends Base {
 !mrdj fav list
 
 お気に入りの内容確認:
-!mrdj fav describe [お気に入り一覧で表示されたID]
+!mrdj fav info [お気に入り一覧で表示されたID]
 
 お気に入りを再生:
 !mrdj fav load [お気に入り一覧で表示されたID]
@@ -80,7 +80,7 @@ export class MrDJ extends Base {
         return this.flashMessage(message.channel, embed, 10000);
     }
 
-    @Command('!mrdj fav describe')
+    @Command('!mrdj fav info')
     async cmdFavDescribe(message: Discord.Message, ...args: string[]) {
         const id = Number(args.join(""));
         const db = await Connection();
