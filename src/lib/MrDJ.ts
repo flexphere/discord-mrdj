@@ -48,6 +48,9 @@ export class MrDJ extends Base {
 
             お気に入り一覧:
             !mrdj fav load [お気に入り一覧で表示されたID]
+
+            ランキング:
+            !mrdj ranking
             \`\`\`
         `);
     }
