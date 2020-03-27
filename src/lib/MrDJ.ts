@@ -28,6 +28,31 @@ export class MrDJ extends Base {
     connection!: Discord.VoiceConnection;
 
     @Command('!mrdj fav list')
+    async help(message: Discord.Message, ...args: string[]) {
+        return this.flashMessage(message.channel, `
+            \`\`\`
+            曲の再生 / 再生リストへの追加:
+            !mrdj play [検索キーワード or YoutubeURL]
+
+            再生リスト一覧:
+            !mrdj list
+
+            再生リストから削除:
+            !mrdj delete [再生リスト一覧で表示されたID]
+
+            お気に入りとして再生リストを保存:
+            !mrdj fav save [保存する名前]
+
+            お気に入り一覧:
+            !mrdj fav list
+
+            お気に入り一覧:
+            !mrdj fav load [お気に入り一覧で表示されたID]
+            \`\`\`
+        `);
+    }
+
+    @Command('!mrdj fav list')
     async requestListPlaylist(message: Discord.Message, ...args: string[]) {
         const db = await Connection();
         const rows = await db.query('select * from playlist');
@@ -40,7 +65,7 @@ export class MrDJ extends Base {
 
         return this.flashMessage(message.channel, embed, 10000);
     }
-    
+
     @Command('!mrdj fav save')
     async requestSavePlaylist(message: Discord.Message, ...args: string[]) {
         const title = args.join("");
