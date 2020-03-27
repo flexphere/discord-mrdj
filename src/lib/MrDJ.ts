@@ -71,7 +71,7 @@ export class MrDJ extends Base {
         .setTitle('プレイリスト一覧')
         .setColor(0xf8e71c)
         .setDescription(rows.map((r: any, i: number) => {
-            return `#${r.id} ${r.title}`;
+            return `[${r.id}]  ${r.title}`;
         }).join("\n"));
 
         return this.flashMessage(message.channel, embed, 10000);
@@ -147,7 +147,7 @@ export class MrDJ extends Base {
             .setColor(0xf8e71c)
             .setDescription(this.playlist.map((r, i) => {
                 const emoji = i === this.playindex ? '🎶' : '➖';
-                return `${i} ${r.video.title}（${r.video.timestamp}）`;
+                return `[${i}]  ${r.video.title}（${r.video.timestamp}）`;
             }).join("\n"));
 
         return this.flashMessage(message.channel, embed, 10000);
