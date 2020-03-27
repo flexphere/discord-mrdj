@@ -27,6 +27,43 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
+    @Command('!mrdj playlist save')
+    async requestSavePlaylist(message: Discord.Message, ...args: string[]) {
+        const title = args.join("");
+        if (!title) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡名前を決めてくれーい");
+        }
+
+        const data = JSON.stringify(this.playlist);
+
+        const db = await Connection();
+        await db.query('insert into playlist (title, data) values (?, ?) ', [title, data]);
+
+        return this.flashMessage(message.channel, "(*'ω')b+ 保存したよ！");
+    }
+
+    @Command('!mrdj playlist load')
+    async requestLoadPlaylist(message: Discord.Message, ...args: string[]) {
+        const id = Number(args.join(""));
+
+        if (id === NaN) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
+        }
+
+        const db = await Connection();
+        const rows = await db.query('select * from playlist where id = ?', [id]);
+        if ( ! rows.length) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡見っかんなかった");
+        }
+
+        const row = rows.shift()
+        this.playlist = JSON.parse(row.data);
+        this.playindex = -1;
+        this.play();
+
+        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
+    }
+
     @Command('!mrdj ranking')
     async requestRanking(message: Discord.Message, ...args: string[]) {
         const db = await Connection();
@@ -60,7 +97,7 @@ export class MrDJ extends Base {
             .setColor(0xf8e71c)
             .setDescription(this.playlist.map((r, i) => {
                 const emoji = i === this.playindex ? '🎶' : '➖';
-                return `${emoji} ${r.video.title}（${r.video.timestamp}）`;
+                return `${i} ${r.video.title}（${r.video.timestamp}）`;
             }).join("\n"));
 
         return this.flashMessage(message.channel, embed, 10000);
