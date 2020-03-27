@@ -29,30 +29,38 @@ export class MrDJ extends Base {
 
     @Command('!mrdj help')
     async help(message: Discord.Message, ...args: string[]) {
-        return this.flashMessage(message.channel, `
-            \`\`\`
-            曲の再生 / 再生リストへの追加:
-            !mrdj play [検索キーワード or YoutubeURL]
+        return this.flashMessage(message.channel, `**Usage**
+\`\`\`
+曲のリクエスト:
+!mrdj play [検索キーワード or YoutubeURL]
 
-            再生リスト一覧:
-            !mrdj list
+次のリクエストを再生:
+!mrdj skip
 
-            再生リストから削除:
-            !mrdj delete [再生リスト一覧で表示されたID]
+リクエスト一覧:
+!mrdj list
 
-            お気に入りとして再生リストを保存:
-            !mrdj fav save [保存する名前]
+リクエストを全て削除:
+!mrdj clear
 
-            お気に入り一覧:
-            !mrdj fav list
+リクエストを削除:
+!mrdj delete [再生リスト一覧で表示されたID]
 
-            お気に入り一覧:
-            !mrdj fav load [お気に入り一覧で表示されたID]
+リクエストランキング:
+!mrdj ranking
 
-            ランキング:
-            !mrdj ranking
-            \`\`\`
-        `);
+---
+
+お気に入りとして現在のリクエスト一覧を保存:
+!mrdj fav save [保存する名前]
+
+お気に入り一覧:
+!mrdj fav list
+
+お気に入りを再生:
+!mrdj fav load [お気に入り一覧で表示されたID]            
+\`\`\`
+        `, 20000);
     }
 
     @Command('!mrdj fav list')
