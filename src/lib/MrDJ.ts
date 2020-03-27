@@ -42,6 +42,20 @@ export class MrDJ extends Base {
         return this.flashMessage(message.channel, "(*'ω')b+ 保存したよ！");
     }
 
+    @Command('!mrdj playlist list')
+    async requestListPlaylist(message: Discord.Message, ...args: string[]) {
+        const db = await Connection();
+        const rows = await db.query('select * from playlist');
+        const embed = new Discord.MessageEmbed()
+        .setTitle('プレイリスト一覧')
+        .setColor(0xf8e71c)
+        .setDescription(rows.map((r: any, i: number) => {
+            return `#${r.id} ${r.title}`;
+        }).join("\n"));
+
+        return this.flashMessage(message.channel, embed, 10000);
+    }
+
     @Command('!mrdj playlist load')
     async requestLoadPlaylist(message: Discord.Message, ...args: string[]) {
         const id = Number(args.join(""));
