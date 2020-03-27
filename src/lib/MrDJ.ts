@@ -103,6 +103,26 @@ export class MrDJ extends Base {
         return this.flashMessage(message.channel, embed, 10000);
     }
 
+    @Command('!mrdj delete')
+    async requestDeleteQueue(message: Discord.Message, ...args: string[]) {
+        if ( ! this.playlist.length) {
+            return this.flashMessage(message.channel, "('A`)空っぽ ");
+        }
+
+        const id = Number(args.join(""));
+        if (id === NaN) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
+        }
+
+        if ( ! this.playlist[id]) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡その数字無理");
+        }
+
+        this.playlist.splice(id, 1);
+
+        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
+    }
+
     @Command('!mrdj clear')
     async requestPlaylistClear(message: Discord.Message, ...args: string[]) {
         this.playindex = 0;
