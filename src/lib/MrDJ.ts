@@ -338,6 +338,28 @@ export class MrDJ extends Base {
                 return;
             }
 
+            this.playlist.push(result);
+
+            const db = await Connection();
+            await db.query('INSERT INTO history (url, title) values (?, ?)', [result.video.url, result.video.title]);
+
+            if ( ! this.playing) {
+                this.play();
+            } else {
+                return this.flashMessage(reaction.message.channel, `(*'ω')b+ 予約リストに入れたよ！`);
+            }
+        } catch (e) {
+            console.error(e);
+            reaction.message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
+        }
+    }
+
+    async play() {
+        try {
+            if (this.playlist.length < 1) {
+                return;
+            }
+
             this.playindex++;
             const queue = this.playlist[this.playindex];
             if ( ! queue) {
