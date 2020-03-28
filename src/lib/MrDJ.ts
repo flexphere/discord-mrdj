@@ -27,6 +27,21 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
+    @Command('!mrdj ranking')
+    async requestRanking(message: Discord.Message, ...args: string[]) {
+        const db = await Connection();
+        const rows = await db.query('select title, count(*) as cnt  from history group by title order by cnt desc limit 10;');
+
+        const embed = new Discord.MessageEmbed()
+            .setTitle('ランキング')
+            .setColor(0xf8e71c)
+            .setDescription(rows.map((r: any, i: number) => {
+                return `#${i} ${r.title}（${r.cnt}）`;
+            }).join("\n"));
+
+        return this.flashMessage(message.channel, embed, 10000);        
+    }
+
     @Command('!mrdj skip')
     async requestSkip(message: Discord.Message, ...args: string[]) {
         if ( ! this.playlist.length) {
