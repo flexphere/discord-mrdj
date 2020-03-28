@@ -27,6 +27,12 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
+    @Command('!mrdj reboot')
+    async reboot(message: Discord.Message, ...args: string[]) {
+        await this.flashMessage(message.channel, `bye`);
+        process.exit(0);
+    }
+
     @Command('!mrdj help')
     async help(message: Discord.Message, ...args: string[]) {
         return this.flashMessage(message.channel, `**Usage**
