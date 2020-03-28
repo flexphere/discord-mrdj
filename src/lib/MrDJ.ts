@@ -27,8 +27,119 @@ export class MrDJ extends Base {
     playing: boolean = false;
     connection!: Discord.VoiceConnection;
 
+    @Command('!mrdj help')
+    async help(message: Discord.Message, ...args: string[]) {
+        return this.flashMessage(message.channel, `**Usage**
+\`\`\`
+曲のリクエスト:
+!mrdj play [検索キーワード or YoutubeURL]
+
+次のリクエストを再生:
+!mrdj skip
+
+リクエスト一覧:
+!mrdj list
+
+リクエストを全て削除:
+!mrdj clear
+
+リクエストを削除:
+!mrdj delete [リクエストリスト一覧で表示されたID]
+
+リクエストランキング:
+!mrdj ranking
+
+---
+
+お気に入りとして現在のリクエスト一覧を保存:
+!mrdj fav save [保存する名前]
+
+お気に入り一覧:
+!mrdj fav list
+
+お気に入りの内容確認:
+!mrdj fav info [お気に入り一覧で表示されたID]
+
+お気に入りを再生:
+!mrdj fav load [お気に入り一覧で表示されたID]
+\`\`\`
+        `, 20000);
+    }
+
+    @Command('!mrdj fav list')
+    async cmdFavList(message: Discord.Message, ...args: string[]) {
+        const db = await Connection();
+        const rows = await db.query('select * from playlist');
+        const embed = new Discord.MessageEmbed()
+        .setTitle('お気に入り一覧')
+        .setColor(0xf8e71c)
+        .setDescription(rows.map((r: any, i: number) => {
+            return `[${r.id}]  ${r.title}`;
+        }).join("\n"));
+
+        return this.flashMessage(message.channel, embed, 10000);
+    }
+
+    @Command('!mrdj fav info')
+    async cmdFavDescribe(message: Discord.Message, ...args: string[]) {
+        const id = Number(args.join(""));
+        const db = await Connection();
+        const rows = await db.query('select * from playlist where id = ?', [id]);
+        if ( ! rows.length) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡見っかんなかった");
+        }
+        const row = rows.shift()
+        const data = JSON.parse(row.data);
+
+        const embed = new Discord.MessageEmbed()
+        .setTitle(row.title)
+        .setColor(0xf8e71c)
+        .setDescription(data.map((r: SearchResult) => {
+            return `${r.video.title}（${r.video.timestamp}）`;
+        }).join("\n"));
+
+        return this.flashMessage(message.channel, embed, 10000);
+    }
+
+    @Command('!mrdj fav save')
+    async cmdFavSave(message: Discord.Message, ...args: string[]) {
+        const title = args.join("");
+        if (!title) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡名前を決めてくれーい");
+        }
+
+        const data = JSON.stringify(this.playlist);
+
+        const db = await Connection();
+        await db.query('insert into playlist (title, data) values (?, ?) ', [title, data]);
+
+        return this.flashMessage(message.channel, "(*'ω')b+ 保存したよ！");
+    }
+
+    @Command('!mrdj fav load')
+    async cmdFavLoad(message: Discord.Message, ...args: string[]) {
+        const id = Number(args.join(""));
+
+        if (id === NaN) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
+        }
+
+        const db = await Connection();
+        const rows = await db.query('select * from playlist where id = ?', [id]);
+        if ( ! rows.length) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡見っかんなかった");
+        }
+
+        const row = rows.shift()
+        this.playlist = JSON.parse(row.data);
+        this.playindex = -1;
+        this.play();
+
+        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
+    }
+
     @Command('!mrdj ranking')
-    async requestRanking(message: Discord.Message, ...args: string[]) {
+    async cmdRanking(message: Discord.Message, ...args: string[]) {
         const db = await Connection();
         const rows = await db.query('select title, count(*) as cnt  from history group by title order by cnt desc limit 10;');
 
@@ -43,7 +154,7 @@ export class MrDJ extends Base {
     }
 
     @Command('!mrdj skip')
-    async requestSkip(message: Discord.Message, ...args: string[]) {
+    async cmdSkip(message: Discord.Message, ...args: string[]) {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
         }
@@ -51,35 +162,101 @@ export class MrDJ extends Base {
     }
 
     @Command('!mrdj list')
-    async requestPlaylist(message: Discord.Message, ...args: string[]) {
+    async cmdList(message: Discord.Message, ...args: string[]) {
         if ( ! this.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
         }
         const embed = new Discord.MessageEmbed()
-            .setTitle('予約一覧')
+            .setTitle('リクエスト一覧')
             .setColor(0xf8e71c)
             .setDescription(this.playlist.map((r, i) => {
                 const emoji = i === this.playindex ? '🎶' : '➖';
-                return `${emoji} ${r.video.title}（${r.video.timestamp}）`;
+                return `[${i}]  ${r.video.title}（${r.video.timestamp}）`;
             }).join("\n"));
 
         return this.flashMessage(message.channel, embed, 10000);
     }
 
+    @Command('!mrdj delete')
+    async cmdDelete(message: Discord.Message, ...args: string[]) {
+        if ( ! this.playlist.length) {
+            return this.flashMessage(message.channel, "('A`)空っぽ ");
+        }
+
+        const id = Number(args.join(""));
+        if (id === NaN) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
+        }
+
+        if ( ! this.playlist[id]) {
+            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡その数字無理");
+        }
+
+        this.playlist.splice(id, 1);
+
+        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
+    }
+
     @Command('!mrdj clear')
-    async requestPlaylistClear(message: Discord.Message, ...args: string[]) {
+    async cmdClear(message: Discord.Message, ...args: string[]) {
         this.playindex = 0;
         this.playlist = [];
         return this.flashMessage(message.channel, "('A`)空っぽ ");
     }
 
     @Command('!mrdj play')
-    async requestPlay(message: Discord.Message, ...args: string[]) {
+    async cmdPlay(message: Discord.Message, ...args: string[]) {
         const param = args.join(" ");
         if (param.startsWith('https://www.youtube.com')) {
             return this.playFromURL(param, message);
         }
         return this.playFromQuery(param, message)
+    }
+
+    @Listen('messageReactionAdd')
+    async reaction(reaction: Discord.MessageReaction, user: Discord.User) {
+        try {
+            if (user.bot) {
+                return;
+            }
+
+            if (reaction.message.id !== this.messageId) {
+                return;
+            }
+
+            const member = reaction.message.guild?.member(user);
+            if ( ! member) {
+                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
+            }
+
+            if ( ! member.voice.channel) {
+                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
+            }
+    
+            const result = this.searchResults.find(r => r.emoji === reaction.emoji.name);
+            if (result === undefined) {
+                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめんうそ。そんな動画なかった`);
+            }
+
+            this.connection = await member.voice.channel?.join();
+            if ( ! this.connection) {
+                return;
+            }
+
+            this.playlist.push(result);
+
+            const db = await Connection();
+            await db.query('INSERT INTO history (url, title) values (?, ?)', [result.video.url, result.video.title]);
+
+            if ( ! this.playing) {
+                this.play();
+            } else {
+                return this.flashMessage(reaction.message.channel, `(*'ω')b+ OK！`);
+            }
+        } catch (e) {
+            console.error(e);
+            reaction.message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
+        }
     }
 
     async playFromURL(url: string, message: Discord.Message) {
@@ -118,7 +295,7 @@ export class MrDJ extends Base {
             await db.query('INSERT INTO history (url, title) values (?, ?)', [v.url, v.title]);
             
             if (this.playing) {
-                return this.flashMessage(message.channel, `(*'ω')b+ 予約リストに入れたよ！`);    
+                return this.flashMessage(message.channel, `(*'ω')b+ OK！`);    
             }
 
             return this.play();
@@ -155,33 +332,9 @@ export class MrDJ extends Base {
         }
     }
 
-    @Listen('messageReactionAdd')
-    async reaction(reaction: Discord.MessageReaction, user: Discord.User) {
+    async play() {
         try {
-            if (user.bot) {
-                return;
-            }
-
-            if (reaction.message.id !== this.messageId) {
-                return;
-            }
-
-            const member = reaction.message.guild?.member(user);
-            if ( ! member) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
-            }
-
-            if ( ! member.voice.channel) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
-            }
-    
-            const result = this.searchResults.find(r => r.emoji === reaction.emoji.name);
-            if (result === undefined) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめんうそ。そんな動画なかった`);
-            }
-
-            this.connection = await member.voice.channel?.join();
-            if ( ! this.connection) {
+            if (this.playlist.length < 1) {
                 return;
             }
 
