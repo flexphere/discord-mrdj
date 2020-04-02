@@ -265,6 +265,22 @@ export class MrDJ extends Base {
         }
     }
 
+    @Listen('voiceStateUpdate')
+    async stateUpdate(...args: any) {
+        if ( ! this.connection) {
+            return;
+        }
+
+        if ( this.connection.status !== 0 ) {
+            return;
+        }
+
+        const memberCount = this.connection.channel.members.array().length;
+        if (memberCount < 1) {
+            this.connection.disconnect();
+        }
+    }
+
     async playFromURL(url: string, message: Discord.Message) {
         try {
             let videoID = "";
