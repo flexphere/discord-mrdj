@@ -216,6 +216,12 @@ export class MrDJ extends Base {
         if (param.startsWith('https://www.youtube.com')) {
             return this.playFromURL(param, message);
         }
+        if (param.startsWith('https://music.youtube.com')) {
+            return this.playFromURL(param, message);
+        }
+        if (param.startsWith('https://youtu.be')) {
+            return this.playFromURL(param, message);
+        }
         return this.playFromQuery(param, message)
     }
 
