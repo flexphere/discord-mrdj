@@ -41,6 +41,10 @@ export function Command(command: string) {
             if (args[0].author.bot) {
                 return;
             }
+
+            if ( ! args[0].member) {
+                return;
+            }
             
             if ( ! args[0].content.startsWith(command)) {
                 return;

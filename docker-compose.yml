@@ -1,0 +1,9 @@
+version: "3"
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=Njg0MzA5MTMyMzIwMzA5MjY4.Xl4Oig.BUaPGCP7v81zFibg31egeLoUH74
+      - DB_FILE=db/mrdj.db
+    

@@ -1,386 +1,176 @@
 import Discord from 'discord.js';
 import { Base } from './discordUtil/Base';
 import { Bot, Command, Listen } from './discordUtil/Decorator';
-import { Alphabet } from './Emoji';
-import { Connection } from './DB';
+import HelpText from './HelpText';
 const qs = require('querystring');
 const ytdl = require('ytdl-core');
 const yts = require('yt-search');
 
+type RequiredAndNotNull<T> = {
+    [P in keyof T]-?: Exclude<T[P], null | undefined>
+}
+
+type RequireAndNotNullSome<T, K extends keyof T> = 
+    RequiredAndNotNull<Pick<T, K>> & Omit<T, K>;
+
+type Message = RequireAndNotNullSome<Discord.Message, 'member' | 'channel'>
+interface Video {
+    channel: Discord.VoiceChannel;
+    source: YoutubeVideo;
+}
 interface YoutubeVideo {
     title: string;
     timestamp: string;
     url: string;
 }
 
-interface SearchResult {
-    emoji: string;
-    video: YoutubeVideo;
+interface channelInfo {
+    id: string;
+    playlist: Video[];
+    playing: boolean;
 }
 
 @Bot()
 export class MrDJ extends Base {
     messageId: string = "";
-    searchResults: SearchResult[] = [];
-    playlist: SearchResult[] = [];
-    playindex: number = -1;
-    playing: boolean = false;
-    connection!: Discord.VoiceConnection;
+    channels:channelInfo[] = [];
 
-    @Command('!mrdj reboot')
-    async reboot(message: Discord.Message, ...args: string[]) {
-        await this.flashMessage(message.channel, `bye`);
+    @Command('!dj reboot')
+    async reboot() {
         process.exit(0);
     }
 
-    @Command('!mrdj help')
-    async help(message: Discord.Message, ...args: string[]) {
-        return this.flashMessage(message.channel, `**Usage**
-\`\`\`
-曲のリクエスト:
-!mrdj play [検索キーワード or YoutubeURL]
-
-次のリクエストを再生:
-!mrdj skip
-
-リクエスト一覧:
-!mrdj list
-
-リクエストを全て削除:
-!mrdj clear
-
-リクエストを削除:
-!mrdj delete [リクエストリスト一覧で表示されたID]
-
-リクエストランキング:
-!mrdj ranking
-
----
-
-お気に入りとして現在のリクエスト一覧を保存:
-!mrdj fav save [保存する名前]
-
-お気に入り一覧:
-!mrdj fav list
-
-お気に入りの内容確認:
-!mrdj fav info [お気に入り一覧で表示されたID]
-
-お気に入りを再生:
-!mrdj fav load [お気に入り一覧で表示されたID]
-\`\`\`
-        `, 20000);
-    }
-
-    @Command('!mrdj fav list')
-    async cmdFavList(message: Discord.Message, ...args: string[]) {
-        const db = await Connection();
-        const rows = await db.query('select * from playlist');
-        const embed = new Discord.MessageEmbed()
-        .setTitle('お気に入り一覧')
-        .setColor(0xf8e71c)
-        .setDescription(rows.map((r: any, i: number) => {
-            return `[${r.id}]  ${r.title}`;
-        }).join("\n"));
-
-        return this.flashMessage(message.channel, embed, 10000);
-    }
-
-    @Command('!mrdj fav info')
-    async cmdFavDescribe(message: Discord.Message, ...args: string[]) {
-        const id = Number(args.join(""));
-        const db = await Connection();
-        const rows = await db.query('select * from playlist where id = ?', [id]);
-        if ( ! rows.length) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡見っかんなかった");
+    @Command('!dj help')
+    async help(message: Message) {
+        if (!(message.channel instanceof Discord.TextChannel)) {
+            return;
         }
-        const row = rows.shift()
-        const data = JSON.parse(row.data);
-
-        const embed = new Discord.MessageEmbed()
-        .setTitle(row.title)
-        .setColor(0xf8e71c)
-        .setDescription(data.map((r: SearchResult) => {
-            return `${r.video.title}（${r.video.timestamp}）`;
-        }).join("\n"));
-
-        return this.flashMessage(message.channel, embed, 10000);
+        return this.flashMessage(message.channel, HelpText, 20000);
     }
 
-    @Command('!mrdj fav save')
-    async cmdFavSave(message: Discord.Message, ...args: string[]) {
-        const title = args.join("");
-        if (!title) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡名前を決めてくれーい");
+    @Command('!dj leave')
+    async leave(message: Message) {
+        const conn = this.client.voice?.connections.find(v => v.channel.id === message.member.voice.channel?.id)
+        conn?.disconnect();
+
+        this.channels = this.channels.filter((channel:channelInfo) => {
+            return channel.id != message.member.voice.channel?.id
+        })
+    }
+
+    @Command('!dj skip')
+    async skip(message: Message) {
+        if ( ! message.member.voice.channel) {
+            return;
+        }
+        const channel = this.getOrCreateChannelInfo(message.member.voice.channel.id)
+        this.play(channel);
+    }
+
+    @Command('!dj play')
+    async cmdPlay(message: Message, ...args: string[]) {
+        if ( ! message.member.voice.channel) {
+            return;
         }
 
-        const data = JSON.stringify(this.playlist);
+        const channel = this.getOrCreateChannelInfo(message.member.voice.channel.id);
 
-        const db = await Connection();
-        await db.query('insert into playlist (title, data) values (?, ?) ', [title, data]);
-
-        return this.flashMessage(message.channel, "(*'ω')b+ 保存したよ！");
-    }
-
-    @Command('!mrdj fav load')
-    async cmdFavLoad(message: Discord.Message, ...args: string[]) {
-        const id = Number(args.join(""));
-
-        if (id === NaN) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
+        const url = args.join(" ");
+        if (!url.startsWith('https://www.youtube.com') && !url.startsWith('https://music.youtube.com') && !url.startsWith('https://youtu.be')) {
+            return;
         }
 
-        const db = await Connection();
-        const rows = await db.query('select * from playlist where id = ?', [id]);
-        if ( ! rows.length) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡見っかんなかった");
+        if (url.indexOf('?') === -1) {
+            return;
         }
 
-        const row = rows.shift()
-        this.playlist = JSON.parse(row.data);
-        this.playindex = -1;
-        this.play();
+        const params = qs.parse(url.split('?')[1]);
+        if (params.list) {
+            const list = await yts({listId: params.list}).catch(() => null);
+            for (const videoInfo of list.videos) {
+                const video = await yts({videoId: videoInfo.videoId}).catch(() => null);
+                if (video) {
+                    channel.playlist.push({channel: message.member.voice.channel, source: video});
+                }
+            }
+        } else {
+            const video = await yts({videoId: params.v}).catch(() => null);
+            if (video) {
+                channel.playlist.push({channel: message.member.voice.channel, source: video});
+            }
+        }
 
-        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
+        if ( ! channel.playing) {
+            this.play(channel);
+        }
     }
 
-    @Command('!mrdj ranking')
-    async cmdRanking(message: Discord.Message, ...args: string[]) {
-        const db = await Connection();
-        const rows = await db.query('select title, count(*) as cnt  from history group by title order by cnt desc limit 10;');
+    @Command('!dj list')
+    async cmdList(message: Message) {
+        if (!(message.channel instanceof Discord.TextChannel)) {
+            return;
+        }
 
-        const embed = new Discord.MessageEmbed()
-            .setTitle('ランキング')
-            .setColor(0xf8e71c)
-            .setDescription(rows.map((r: any, i: number) => {
-                return `#${i} ${r.title}（${r.cnt}）`;
-            }).join("\n"));
+        if ( ! message.member.voice.channel) {
+            return;
+        }
 
-        return this.flashMessage(message.channel, embed, 10000);        
-    }
+        const channel = this.getChannelInfo(message.member.voice.channel.id);
+        if ( ! channel) {
+            return;
+        }
 
-    @Command('!mrdj skip')
-    async cmdSkip(message: Discord.Message, ...args: string[]) {
-        if ( ! this.playlist.length) {
+        if ( ! channel.playlist.length) {
             return this.flashMessage(message.channel, "('A`)空っぽ ");
         }
-        this.play();
-    }
 
-    @Command('!mrdj list')
-    async cmdList(message: Discord.Message, ...args: string[]) {
-        if ( ! this.playlist.length) {
-            return this.flashMessage(message.channel, "('A`)空っぽ ");
-        }
         const embed = new Discord.MessageEmbed()
-            .setTitle('リクエスト一覧')
+            .setTitle('再生待ち一覧')
             .setColor(0xf8e71c)
-            .setDescription(this.playlist.map((r, i) => {
-                const emoji = i === this.playindex ? '🎶' : '➖';
-                return `[${i}]  ${r.video.title}（${r.video.timestamp}）`;
+            .setDescription(channel.playlist.map((v, i) => {
+                return `[${i}]  ${v.source.title}（${v.source.timestamp}）`;
             }).join("\n"));
 
         return this.flashMessage(message.channel, embed, 10000);
     }
 
-    @Command('!mrdj delete')
-    async cmdDelete(message: Discord.Message, ...args: string[]) {
-        if ( ! this.playlist.length) {
-            return this.flashMessage(message.channel, "('A`)空っぽ ");
-        }
-
-        const id = Number(args.join(""));
-        if (id === NaN) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡数字を入力してくれーい");
-        }
-
-        if ( ! this.playlist[id]) {
-            return this.flashMessage(message.channel, "｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡その数字無理");
-        }
-
-        this.playlist.splice(id, 1);
-
-        return this.flashMessage(message.channel, "(*'ω')b+ OK！");
-    }
-
-    @Command('!mrdj clear')
-    async cmdClear(message: Discord.Message, ...args: string[]) {
-        this.playindex = 0;
-        this.playlist = [];
-        return this.flashMessage(message.channel, "('A`)空っぽ ");
-    }
-
-    @Command('!mrdj play')
-    async cmdPlay(message: Discord.Message, ...args: string[]) {
-        const param = args.join(" ");
-        if (param.startsWith('https://www.youtube.com')) {
-            return this.playFromURL(param, message);
-        }
-        if (param.startsWith('https://music.youtube.com')) {
-            return this.playFromURL(param, message);
-        }
-        if (param.startsWith('https://youtu.be')) {
-            return this.playFromURL(param, message);
-        }
-        return this.playFromQuery(param, message)
-    }
-
-    @Listen('messageReactionAdd')
-    async reaction(reaction: Discord.MessageReaction, user: Discord.User) {
-        try {
-            if (user.bot) {
-                return;
-            }
-
-            if (reaction.message.id !== this.messageId) {
-                return;
-            }
-
-            const member = reaction.message.guild?.member(user);
-            if ( ! member) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
-            }
-
-            if ( ! member.voice.channel) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
-            }
-    
-            const result = this.searchResults.find(r => r.emoji === reaction.emoji.name);
-            if (result === undefined) {
-                return this.flashMessage(reaction.message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめんうそ。そんな動画なかった`);
-            }
-
-            this.connection = await member.voice.channel?.join();
-            if ( ! this.connection) {
-                return;
-            }
-
-            this.playlist.push(result);
-
-            const db = await Connection();
-            await db.query('INSERT INTO history (url, title) values (?, ?)', [result.video.url, result.video.title]);
-
-            if ( ! this.playing) {
-                this.play();
-            } else {
-                return this.flashMessage(reaction.message.channel, `(*'ω')b+ OK！`);
-            }
-        } catch (e) {
-            console.error(e);
-            reaction.message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
-        }
-    }
-
-    @Listen('voiceStateUpdate')
-    async stateUpdate(...args: any) {
-        if ( ! this.connection) {
+    @Command('!dj clear')
+    async cmdClear(message: Message) {
+        if (!(message.channel instanceof Discord.TextChannel)) {
             return;
         }
 
-        if ( this.connection.status !== 0 ) {
+        if ( ! message.member.voice.channel) {
             return;
         }
 
-        const memberCount = this.connection.channel.members.array().length;
-        if (memberCount < 1) {
-            this.connection.disconnect();
+        const channel = this.getChannelInfo(message.member.voice.channel.id);
+        if ( ! channel) {
+            return;
         }
+
+        channel.playlist = [];
     }
 
-    async playFromURL(url: string, message: Discord.Message) {
+    async play(channel:channelInfo) {
         try {
-            let videoID = "";
-
-            if (url.indexOf('?') !== -1) {
-                const params = qs.parse(url.split('?')[1]);
-                videoID = params.v;
-            }
-
-            if (videoID === "") {
+            const video = channel.playlist.shift();
+            if ( ! video) {
                 return;
             }
 
-            if ( ! this.connection) {
-                const member = message.guild?.member(message.author);
-                if ( ! member) {
-                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡あんた誰・・`);
-                }
-
-                if ( ! member.voice.channel) {
-                    return this.flashMessage(message.channel, `｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡音声チャンネルに入ってからやってくれい`);
-                }
-
-                this.connection = await member.voice.channel?.join();
-                if ( ! this.connection) {
-                    return;
-                }
+            const conn = await video.channel.join();
+            if ( ! conn) {
+                return;
             }
-
-            const v = await yts({videoId:videoID});
-            this.playlist.push({ emoji: '', video: v });
-
-            const db = await Connection();
-            await db.query('INSERT INTO history (url, title) values (?, ?)', [v.url, v.title]);
             
-            if (this.playing) {
-                return this.flashMessage(message.channel, `(*'ω')b+ OK！`);    
-            }
+            const stream = ytdl(video.source.url, { filter: 'audioonly', highWaterMark: 1 << 25, });
+            const dispatcher = conn.play(stream);
+            channel.playing = true;
 
-            return this.play();
-        } catch (e) {
-            console.error(e);
-            message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
-        }
-    }
-
-    async playFromQuery(searchKeyword: string, message: Discord.Message) {
-        try {
-            const r = await yts(searchKeyword);
-            if ( ! r?.videos) {
-                return this.flashMessage(message.channel, '｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。動画みっかんなかった');
-            }
-
-            this.searchResults = r.videos.slice(0, 5).map((v:YoutubeVideo, i:number) => {
-                return { emoji: Alphabet[i], video: v };
-            });
-    
-            const embed = new Discord.MessageEmbed()
-                .setTitle('検索結果一覧')
-                .setColor(0xf8e71c)
-                .setDescription(this.searchResults.map(r => `${r.emoji} ${r.video.title}（${r.video.timestamp}）`).join("\n"));
-    
-            const botMessage = await this.flashMessage(message.channel, embed, 10000);
-            this.messageId = botMessage.id;
-            this.searchResults.forEach(async(r) => {
-                await botMessage.react(r.emoji);
-            });
-        } catch (e) {
-            console.error(e);
-            message.channel.send('｡ﾟ(ﾟ´Д｀ﾟ)ﾟ｡ごめん。エラーだわ');
-        }
-    }
-
-    async play() {
-        try {
-            if (this.playlist.length < 1) {
-                return;
-            }
-
-            this.playindex++;
-            const queue = this.playlist[this.playindex];
-            if ( ! queue) {
-                this.playindex = -1;
-                this.play();
-                return;
-            }
-
-            this.client.user?.setActivity(`🎶 Now Playing... ${queue.video.title}\n${queue.video.url}`);
-            this.playing = true;
-            const stream = ytdl(queue.video.url, { filter: 'audioonly', highWaterMark: 1 << 25, });
-            const dispatcher = this.connection.play(stream);
             dispatcher.on('finish', () => {
-                this.playing = false;
-                this.play();
+                channel.playing = false;
+                this.play(channel);
             });
         } catch (e) {
             console.log(e);
@@ -391,5 +181,30 @@ export class MrDJ extends Base {
         const message = await channel.send(context);
         message.delete({timeout: duration});
         return message;
+    }
+
+    getOrCreateChannelInfo(channel_id: string) {
+        let channel = this.getChannelInfo(channel_id);
+        if ( ! channel) {
+            channel = {
+                id: channel_id,
+                playlist: [],
+                playing: false
+            };
+            this.channels.push(channel);
+        }
+        return channel;
+    }
+
+    createChannelInfo(channel_id: string) {
+        this.channels.push({
+            id: channel_id,
+            playlist: [],
+            playing: false
+        });
+    }
+
+    getChannelInfo(channel_id: string) {
+        return this.channels.find((channel) => channel.id === channel_id);
     }
 }
