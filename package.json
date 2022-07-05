@@ -7,7 +7,7 @@
         "start": "./node_modules/.bin/ts-node src/index.ts"
     },
     "dependencies": {
-        "@discordjs/opus": "^0.3.3",
+        "@discordjs/opus": "^0.8.0",
         "discord.js": "^12.0.2",
         "ts-node": "^8.8.1",
         "yt-search": "^2.5.0",
